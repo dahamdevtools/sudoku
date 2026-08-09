@@ -1,0 +1,36 @@
+const puzzle = [
+  [0, 1, 0, 3, 0, 0, 0, 0, 5],
+  [2, 0, 0, 0, 0, 1, 0, 0, 0],
+  [5, 3, 0, 0, 0, 8, 0, 0, 1],
+  [0, 0, 0, 8, 5, 7, 2, 0, 4],
+  [0, 0, 5, 0, 4, 2, 3, 7, 9],
+  [0, 4, 0, 6, 0, 0, 0, 0, 8],
+  [6, 5, 3, 0, 0, 0, 0, 9, 2],
+  [0, 0, 7, 9, 8, 5, 4, 0, 6],
+  [9, 8, 4, 2, 3, 0, 0, 1, 7],
+];
+
+const array = [];
+
+const valueRecorder = Array.from({ length: 9 }, (_, index) => ({
+  value: index + 1,
+  count: 9,
+}));
+
+function test() {
+  puzzle.forEach((row) => row.forEach((value) => array.push(value)));
+  for (let i = 1; i <= 9; i++) {
+    for (let a = 0; a < array.length; a++) {
+      if (array[a] === i) {
+        for (let v = 0; v < valueRecorder.length; v++) {
+          if (valueRecorder[v].value === i) {
+            valueRecorder[v].count--;
+          }
+        }
+      }
+    }
+  }
+  return valueRecorder;
+}
+
+console.log(test());
