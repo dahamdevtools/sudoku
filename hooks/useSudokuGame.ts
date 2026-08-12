@@ -1,4 +1,5 @@
 import { createPuzzle } from "@/lib/sudoku/createPuzzle";
+import { isComplete } from "@/lib/sudoku/isComplete";
 import { isCorrect } from "@/lib/sudoku/isCorrect";
 import { Grid } from "@/types/sudoku";
 import { useEffect, useState } from "react";
@@ -28,7 +29,10 @@ export function useSudokuGame() {
 
   const [newPuzzleTrigger, setNewPuzzleTrigger] = useState(false);
 
-  const [newGameModal, setNewGameModal] = useState(false);
+  const [newGameModal, setNewGameModal] = useState({
+    isVisible: false,
+    isWin: false,
+  });
 
   const [drawMode, setDrawMode] = useState(false);
 
@@ -110,6 +114,10 @@ export function useSudokuGame() {
       });
 
       setCoordinates([]);
+
+      if (isComplete(puzzleCopy)) {
+        setNewGameModal({ isVisible: true, isWin: true });
+      }
     } else {
       setPuzzle((prevPuzzle) => {
         const newPuzzle = prevPuzzle.map((r, i) => (row === i ? [...r] : r));
@@ -122,7 +130,7 @@ export function useSudokuGame() {
 
       if (newErrorCount >= 3) {
         setCoordinates([]);
-        setNewGameModal(true);
+        setNewGameModal({ isVisible: true, isWin: false });
       }
     }
   }
@@ -156,7 +164,7 @@ export function useSudokuGame() {
   function startNewGame() {
     setError({ status: false, count: 0 });
     setNewPuzzleTrigger((prev) => !prev);
-    setNewGameModal(false);
+    setNewGameModal({ isVisible: false, isWin: false });
   }
 
   return {

@@ -81,7 +81,7 @@ export default function Home() {
                       <button
                         key={`[${rowIndex}, ${colIndex}]`}
                         onClick={() => selectCell(rowIndex, colIndex)}
-                        disabled={newGameModal}
+                        disabled={newGameModal.isVisible}
                         className={`
                           ${isSelected ? "bg-mauve-700/70" : ""}
                           ${!isSelected && rowIndex === coordinates[0] ? "bg-mauve-800/50" : ""}
@@ -142,21 +142,34 @@ export default function Home() {
                 key={index}
                 onClick={() => setValue(data.value)}
                 disabled={data.count === 0}
-                className={`disabled:bg-mauve-900/20 w-full cursor-pointer aspect-square flex items-center justify-center text-3xl rounded-lg text-mauve-300 bg-mauve-900`}
+                className={`disabled:bg-mauve-900/20 w-full min-h-0 cursor-pointer aspect-square flex flex-col items-center justify-center rounded-lg relative bg-mauve-900`}
               >
-                {data.count === 0 ? "✓" : data.value}
+                <span className="w-full h-full flex items-center justify-center text-3xl text-mauve-300">
+                  {data.count === 0 ? "✓" : data.value}
+                </span>
+                <span className="absolute bottom-0 right-0 leading-none p-2 flex items-center justify-center text-mauve-600">
+                  {valueRecorder.find((item) => item.value === data.value)
+                    ?.count === 0
+                    ? ""
+                    : valueRecorder.find((item) => item.value === data.value)
+                        ?.count}
+                </span>
               </button>
             ))}
           </div>
         </div>
       </div>
 
-      {newGameModal && (
+      {newGameModal.isVisible && (
         <div className="w-screen h-screen fixed top-0 left-0 z-10 flex items-center justify-center backdrop-blur-xl bg-mauve-950/50">
           <div className="w-xs h-fit p-5 rounded-xl flex flex-col items-center gap-5 bg-mauve-900">
-            <p className="text-2xl text-center text-mauve-300">Game Over</p>
+            <p className="text-2xl text-center text-mauve-300">
+              {newGameModal.isWin ? "Congratulation" : "Game Over"}
+            </p>
             <p className="text-center text-mauve-500">
-              You have made 3 mistakes and lost this game
+              {newGameModal.isWin
+                ? "You have completed the puzzle and won the game"
+                : "You have made 3 mistakes and lost this game"}
             </p>
             <button
               onClick={startNewGame}
