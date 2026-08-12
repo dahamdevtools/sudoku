@@ -1,6 +1,7 @@
 "use client";
 
 import { useSudokuGame } from "@/hooks/useSudokuGame";
+import { useEffect, useState } from "react";
 import { LuEraser, LuPencil } from "react-icons/lu";
 
 export default function Home() {
@@ -19,6 +20,38 @@ export default function Home() {
     coordinates,
     drawMode,
   } = useSudokuGame();
+
+  const [stopWatch, setStopWatch] = useState<{ time: string; status: boolean }>(
+    { time: "00:00:00", status: true },
+  );
+
+  let [seconds, minutes, hours] = [0, 0, 0];
+
+  function startStopWatch() {
+    seconds++;
+    if (seconds === 60) {
+      seconds = 0;
+      minutes++;
+      if (minutes === 60) {
+        minutes = 0;
+        hours++;
+      }
+    }
+
+    let h = hours < 10 ? "0" + hours : hours;
+    let m = minutes < 10 ? "0" + minutes : minutes;
+    let s = seconds < 10 ? "0" + seconds : seconds;
+
+    setStopWatch({ ...stopWatch, time: `${h}:${m}:${s}` });
+  }
+
+  function updateStopWatch() {
+    setInterval(startStopWatch, 1000);
+  }
+
+  useEffect(() => {
+    updateStopWatch();
+  }, []);
 
   return (
     <div className="w-screen h-screen flex">
@@ -78,6 +111,12 @@ export default function Home() {
         </div>
 
         <div className="w-64 h-fit flex flex-col gap-4">
+          <p
+            style={{ fontFamily: "var(--font-jetbrains-mono)" }}
+            className="text-2xl text-mauve-500"
+          >
+            {stopWatch.time}
+          </p>
           <div className="w-full h-fit grid grid-cols-4 items-center gap-2 text-2xl">
             <button
               onClick={toggleDrawMode}
