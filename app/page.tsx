@@ -1,7 +1,7 @@
 "use client";
 
 import { useSudokuGame } from "@/hooks/useSudokuGame";
-import { LuEraser, LuPencil } from "react-icons/lu";
+import { LuEraser, LuLightbulb, LuPencil, LuUndo2 } from "react-icons/lu";
 
 export default function Home() {
   const {
@@ -19,6 +19,11 @@ export default function Home() {
     coordinates,
     drawMode,
     time,
+    hint,
+    hintsUsed,
+    undo,
+    canUndo,
+    score,
   } = useSudokuGame();
 
   return (
@@ -98,11 +103,36 @@ export default function Home() {
             >
               <LuEraser />
             </button>
+            <button
+              onClick={undo}
+              disabled={!canUndo}
+              className="disabled:opacity-30 w-full cursor-pointer disabled:cursor-default aspect-square rounded-full flex items-center justify-center text-mauve-500 bg-mauve-900 active:text-mauve-300 active:bg-mauve-800"
+            >
+              <LuUndo2 />
+            </button>
+            <button
+              onClick={hint}
+              className="w-full cursor-pointer aspect-square rounded-full flex items-center justify-center text-mauve-500 bg-mauve-900 active:text-mauve-300 active:bg-mauve-800"
+            >
+              <LuLightbulb />
+            </button>
           </div>
-          <div className="w-fit h-fit flex items-center gap-2 text-mauve-500">
-            <p>Mistakes</p>
-            <p>:</p>
-            <p>{error.count}/3</p>
+          <div className="w-fit h-fit flex flex-col gap-1 text-mauve-500">
+            <div className="w-fit h-fit flex items-center gap-2">
+              <p>Mistakes</p>
+              <p>:</p>
+              <p>{error.count}/3</p>
+            </div>
+            <div className="w-fit h-fit flex items-center gap-2">
+              <p>Hints</p>
+              <p>:</p>
+              <p>{hintsUsed}</p>
+            </div>
+            <div className="w-fit h-fit flex items-center gap-2">
+              <p>Score</p>
+              <p>:</p>
+              <p>{score}</p>
+            </div>
           </div>
           <div className="w-full h-64 aspect-square grid grid-cols-3 gap-1">
             {valueRecorder.map((data, index) => (

@@ -16,36 +16,44 @@ function formatTime(totalSeconds: number): string {
   return `${pad(h)}:${pad(m)}:${pad(s)}`;
 }
 
+type ValueRecorder = { value: number; count: number }[];
+type ModalState = { isVisible: boolean; isWin: boolean };
+type ErrorState = { status: boolean; count: number };
+
+type Snapshot = {
+  puzzle: Grid;
+  trackingPuzzle: Grid;
+  drawPuzzle: Grid;
+  valueRecorder: ValueRecorder;
+  error: ErrorState;
+  hintsUsed: number;
+};
+
 export function useSudokuGame() {
   const [puzzle, setPuzzle] = useState<Grid>(EMPTY_GRID());
-
   const [trackingPuzzle, setTrackingPuzzle] = useState<Grid>(EMPTY_GRID());
-
   const [drawPuzzle, setDrawPuzzle] = useState<Grid>(EMPTY_GRID());
-
   const [solution, setSolution] = useState<Grid>(EMPTY_GRID());
-
-  const [valueRecorder, setValueRecorder] = useState<
-    { value: number; count: number }[]
-  >(Array.from({ length: 9 }, (_, index) => ({ value: index + 1, count: 9 })));
-
+  const [newPuzzleTrigger, setNewPuzzleTrigger] = useState(false);
   const [coordinates, setCoordinates] = useState<number[]>([]);
+  const [drawMode, setDrawMode] = useState(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [hintsUsed, setHintsUsed] = useState(0);
+  const [history, setHistory] = useState<Snapshot[]>([]);
 
-  const [error, setError] = useState<{ status: boolean; count: number }>({
+  const [valueRecorder, setValueRecorder] = useState<ValueRecorder>(
+    Array.from({ length: 9 }, (_, index) => ({ value: index + 1, count: 9 })),
+  );
+
+  const [error, setError] = useState<ErrorState>({
     status: false,
     count: 0,
   });
 
-  const [newPuzzleTrigger, setNewPuzzleTrigger] = useState(false);
-
-  const [newGameModal, setNewGameModal] = useState({
+  const [newGameModal, setNewGameModal] = useState<ModalState>({
     isVisible: false,
     isWin: false,
   });
-
-  const [drawMode, setDrawMode] = useState(false);
-
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   useEffect(() => {
     if (newGameModal.isVisible) return;
@@ -63,8 +71,9 @@ export function useSudokuGame() {
     setTrackingPuzzle(result.puzzle);
     setSolution(result.solution);
     setDrawPuzzle(EMPTY_GRID());
-
     setElapsedSeconds(0);
+    setHintsUsed(0);
+    setHistory([]);
 
     const counts = Array(10).fill(0);
     result.puzzle.forEach((row) => row.forEach((value) => counts[value]++));
@@ -90,6 +99,34 @@ export function useSudokuGame() {
     setDrawMode((prev) => !prev);
   }
 
+  function pushHistory() {
+    const snapshot: Snapshot = {
+      puzzle: structuredClone(puzzle),
+      trackingPuzzle: structuredClone(trackingPuzzle),
+      drawPuzzle: structuredClone(drawPuzzle),
+      valueRecorder: structuredClone(valueRecorder),
+      error: { ...error },
+      hintsUsed,
+    };
+    setHistory((prev) => [...prev, snapshot]);
+  }
+
+  function undo() {
+    if (history.length === 0) return;
+
+    const last = history[history.length - 1];
+
+    setPuzzle(last.puzzle);
+    setTrackingPuzzle(last.trackingPuzzle);
+    setDrawPuzzle(last.drawPuzzle);
+    setValueRecorder(last.valueRecorder);
+    setError(last.error);
+    setHintsUsed(last.hintsUsed);
+
+    setHistory((prev) => prev.slice(0, -1));
+    setCoordinates([]);
+  }
+
   function setValue(value: number) {
     if (coordinates.length === 0) return;
 
@@ -110,6 +147,8 @@ export function useSudokuGame() {
     const alreadyLocked =
       puzzle[row][col] !== 0 && puzzle[row][col] === trackingPuzzle[row][col];
     if (alreadyLocked) return;
+
+    pushHistory();
 
     setDrawPuzzle((prevPuzzle) => {
       const newPuzzle = prevPuzzle.map((r, i) => (row === i ? [...r] : r));
@@ -188,12 +227,70 @@ export function useSudokuGame() {
     }
   }
 
+  function hint() {
+    let row: number;
+    let col: number;
+
+    if (coordinates.length === 2) {
+      [row, col] = coordinates;
+      if (puzzle[row][col] !== 0) return;
+    } else {
+      const emptyCells: [number, number][] = [];
+
+      for (let r = 0; r < 9; r++) {
+        for (let c = 0; c < 9; c++) {
+          if (puzzle[r][c] === 0) {
+            emptyCells.push([r, c]);
+          }
+        }
+      }
+
+      if (emptyCells.length === 0) return;
+
+      [row, col] = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+    }
+
+    pushHistory();
+
+    const value = solution[row][col];
+
+    setValueRecorder((prev) =>
+      prev.map((obj) =>
+        obj.value === value ? { ...obj, count: obj.count - 1 } : obj,
+      ),
+    );
+
+    setTrackingPuzzle((prev) => {
+      const next = prev.map((r, i) => (row === i ? [...r] : r));
+      next[row][col] = value;
+      return next;
+    });
+
+    setPuzzle((prev) => {
+      const next = prev.map((r, i) => (row === i ? [...r] : r));
+      next[row][col] = value;
+      return next;
+    });
+
+    setHintsUsed((prev) => prev + 1);
+    setCoordinates([]);
+
+    const checkGrid = structuredClone(trackingPuzzle);
+    checkGrid[row][col] = value;
+
+    if (isComplete(checkGrid)) {
+      setNewGameModal({ isVisible: true, isWin: true });
+    }
+  }
+
   function startNewGame() {
     setError({ status: false, count: 0 });
     setNewGameModal({ isVisible: false, isWin: false });
     generateNewPuzzle();
     setNewPuzzleTrigger((prev) => !prev);
   }
+
+  const score = Math.max(0, 1000 - error.count * 50 - hintsUsed * 100);
 
   return {
     puzzle,
@@ -210,5 +307,10 @@ export function useSudokuGame() {
     coordinates,
     drawMode,
     time: formatTime(elapsedSeconds),
+    hint,
+    hintsUsed,
+    undo,
+    canUndo: history.length > 0,
+    score,
   };
 }
