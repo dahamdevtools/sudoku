@@ -7,6 +7,15 @@ import { useEffect, useState } from "react";
 const EMPTY_GRID = (): Grid =>
   Array.from({ length: 9 }, () => Array(9).fill(0));
 
+function formatTime(totalSeconds: number): string {
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+
+  const pad = (n: number) => (n < 10 ? "0" + n : String(n));
+  return `${pad(h)}:${pad(m)}:${pad(s)}`;
+}
+
 export function useSudokuGame() {
   const [puzzle, setPuzzle] = useState<Grid>(EMPTY_GRID());
 
@@ -36,12 +45,26 @@ export function useSudokuGame() {
 
   const [drawMode, setDrawMode] = useState(false);
 
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
   useEffect(() => {
+    if (newGameModal.isVisible) return;
+
+    const timer = setInterval(() => {
+      setElapsedSeconds((prev) => prev + 1);
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [newPuzzleTrigger, newGameModal.isVisible]);
+
+  function generateNewPuzzle() {
     const result = createPuzzle(40);
     setPuzzle(result.puzzle);
     setTrackingPuzzle(result.puzzle);
     setSolution(result.solution);
     setDrawPuzzle(EMPTY_GRID());
+
+    setElapsedSeconds(0);
 
     const counts = Array(10).fill(0);
     result.puzzle.forEach((row) => row.forEach((value) => counts[value]++));
@@ -52,7 +75,11 @@ export function useSudokuGame() {
     }));
 
     setValueRecorder(newValueRecorder);
-  }, [newPuzzleTrigger]);
+  }
+
+  useEffect(() => {
+    generateNewPuzzle();
+  }, []);
 
   function selectCell(row: number, col: number) {
     setError({ status: false, count: error.count });
@@ -163,8 +190,9 @@ export function useSudokuGame() {
 
   function startNewGame() {
     setError({ status: false, count: 0 });
-    setNewPuzzleTrigger((prev) => !prev);
     setNewGameModal({ isVisible: false, isWin: false });
+    generateNewPuzzle();
+    setNewPuzzleTrigger((prev) => !prev);
   }
 
   return {
@@ -181,5 +209,6 @@ export function useSudokuGame() {
     error,
     coordinates,
     drawMode,
+    time: formatTime(elapsedSeconds),
   };
 }
