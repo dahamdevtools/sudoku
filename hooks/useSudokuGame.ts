@@ -1,11 +1,19 @@
 import { createPuzzle } from "@/lib/sudoku/createPuzzle";
 import { isComplete } from "@/lib/sudoku/isComplete";
 import { isCorrect } from "@/lib/sudoku/isCorrect";
+import { isSafe } from "@/lib/sudoku/isSafe";
 import { Grid } from "@/types/sudoku";
 import { useEffect, useState } from "react";
 
 const EMPTY_GRID = (): Grid =>
   Array.from({ length: 9 }, () => Array(9).fill(0));
+
+type Marks = boolean[][][];
+
+const EMPTY_MARKS = (): Marks =>
+  Array.from({ length: 9 }, () =>
+    Array.from({ length: 9 }, () => Array(9).fill(false)),
+  );
 
 function formatTime(totalSeconds: number): string {
   const h = Math.floor(totalSeconds / 3600);
@@ -16,6 +24,29 @@ function formatTime(totalSeconds: number): string {
   return `${pad(h)}:${pad(m)}:${pad(s)}`;
 }
 
+function clearMarksForPlacement(
+  marks: Marks,
+  row: number,
+  col: number,
+  value: number,
+): Marks {
+  const next = marks.map((r) => r.map((c) => [...c]));
+  const idx = value - 1;
+
+  for (let c = 0; c < 9; c++) next[row][c][idx] = false;
+  for (let r = 0; r < 9; r++) next[r][col][idx] = false;
+
+  const boxRow = row - (row % 3);
+  const boxCol = col - (col % 3);
+  for (let r = boxRow; r < boxRow + 3; r++) {
+    for (let c = boxCol; c < boxCol + 3; c++) {
+      next[r][c][idx] = false;
+    }
+  }
+
+  return next;
+}
+
 type ValueRecorder = { value: number; count: number }[];
 type ModalState = { isVisible: boolean; isWin: boolean };
 type ErrorState = { status: boolean; count: number };
@@ -23,7 +54,7 @@ type ErrorState = { status: boolean; count: number };
 type Snapshot = {
   puzzle: Grid;
   trackingPuzzle: Grid;
-  drawPuzzle: Grid;
+  drawPuzzle: Marks;
   valueRecorder: ValueRecorder;
   error: ErrorState;
   hintsUsed: number;
@@ -32,7 +63,7 @@ type Snapshot = {
 export function useSudokuGame() {
   const [puzzle, setPuzzle] = useState<Grid>(EMPTY_GRID());
   const [trackingPuzzle, setTrackingPuzzle] = useState<Grid>(EMPTY_GRID());
-  const [drawPuzzle, setDrawPuzzle] = useState<Grid>(EMPTY_GRID());
+  const [drawPuzzle, setDrawPuzzle] = useState<Marks>(EMPTY_MARKS());
   const [solution, setSolution] = useState<Grid>(EMPTY_GRID());
   const [newPuzzleTrigger, setNewPuzzleTrigger] = useState(false);
   const [coordinates, setCoordinates] = useState<number[]>([]);
@@ -70,7 +101,7 @@ export function useSudokuGame() {
     setPuzzle(result.puzzle);
     setTrackingPuzzle(result.puzzle);
     setSolution(result.solution);
-    setDrawPuzzle(EMPTY_GRID());
+    setDrawPuzzle(EMPTY_MARKS());
     setElapsedSeconds(0);
     setHintsUsed(0);
     setHistory([]);
@@ -133,11 +164,17 @@ export function useSudokuGame() {
     const [row, col] = coordinates;
 
     if (drawMode) {
+      const alreadyMarked = drawPuzzle[row][col][value - 1];
+
+      if (!alreadyMarked && !isSafe(puzzle, row, col, value)) return;
+
       setError({ status: false, count: error.count });
 
       setDrawPuzzle((prevPuzzle) => {
-        const newPuzzle = prevPuzzle.map((r, i) => (row === i ? [...r] : r));
-        newPuzzle[row][col] = value;
+        const newPuzzle = prevPuzzle.map((r, i) =>
+          row === i ? r.map((c) => [...c]) : r,
+        );
+        newPuzzle[row][col][value - 1] = !alreadyMarked;
         return newPuzzle;
       });
 
@@ -151,8 +188,10 @@ export function useSudokuGame() {
     pushHistory();
 
     setDrawPuzzle((prevPuzzle) => {
-      const newPuzzle = prevPuzzle.map((r, i) => (row === i ? [...r] : r));
-      newPuzzle[row][col] = 0;
+      const newPuzzle = prevPuzzle.map((r, i) =>
+        row === i ? r.map((c) => [...c]) : r,
+      );
+      newPuzzle[row][col] = Array(9).fill(false);
       return newPuzzle;
     });
 
@@ -178,6 +217,8 @@ export function useSudokuGame() {
         newPuzzle[row][col] = value;
         return newPuzzle;
       });
+
+      setDrawPuzzle((prev) => clearMarksForPlacement(prev, row, col, value));
 
       setCoordinates([]);
 
@@ -210,13 +251,13 @@ export function useSudokuGame() {
       puzzle[row][col] !== 0 && puzzle[row][col] === trackingPuzzle[row][col];
     if (alreadyLocked) return;
 
-    if (drawPuzzle[row][col] !== 0) {
-      setDrawPuzzle((prevPuzzle) => {
-        const newPuzzle = prevPuzzle.map((r, i) => (row === i ? [...r] : r));
-        newPuzzle[row][col] = 0;
-        return newPuzzle;
-      });
-    }
+    setDrawPuzzle((prevPuzzle) => {
+      const newPuzzle = prevPuzzle.map((r, i) =>
+        row === i ? r.map((c) => [...c]) : r,
+      );
+      newPuzzle[row][col] = Array(9).fill(false);
+      return newPuzzle;
+    });
 
     if (puzzle[row][col] !== 0) {
       setPuzzle((prevPuzzle) => {
@@ -270,6 +311,14 @@ export function useSudokuGame() {
       const next = prev.map((r, i) => (row === i ? [...r] : r));
       next[row][col] = value;
       return next;
+    });
+
+    setDrawPuzzle((prevPuzzle) => {
+      const newPuzzle = prevPuzzle.map((r, i) =>
+        row === i ? r.map((c) => [...c]) : r,
+      );
+      newPuzzle[row][col] = Array(9).fill(false);
+      return newPuzzle;
     });
 
     setHintsUsed((prev) => prev + 1);

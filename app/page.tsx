@@ -41,14 +41,14 @@ export default function Home() {
                     const rowIndex = boxRow * 3 + row;
                     const colIndex = boxCol * 3 + col;
                     const realValue = puzzle[rowIndex][colIndex];
-                    const drawValue = drawPuzzle[rowIndex][colIndex];
+                    const marks = drawPuzzle[rowIndex][colIndex];
+                    const hasMarks = marks.some((m) => m);
                     const isSelected =
                       coordinates[0] === rowIndex &&
                       coordinates[1] === colIndex;
                     const isWrong =
                       trackingPuzzle[rowIndex][colIndex] !==
                       puzzle[rowIndex][colIndex];
-                    const isDraw = drawValue !== 0;
 
                     return (
                       <button
@@ -60,20 +60,30 @@ export default function Home() {
                           ${!isSelected && rowIndex === coordinates[0] ? "bg-mauve-800/50" : ""}
                           ${!isSelected && colIndex === coordinates[1] ? "bg-mauve-800/50" : ""}
                           ${!isSelected && Math.floor(coordinates[0] / 3) === boxRow && Math.floor(coordinates[1] / 3) === boxCol ? "bg-mauve-800/50" : ""}
-                          ${isSelected && !isDraw && isWrong ? "bg-rose-500/40 text-rose-500" : ""}
-                          ${!isDraw && isWrong ? "bg-rose-500/20 text-rose-500" : ""}
+                          ${isSelected && !hasMarks && isWrong ? "bg-rose-500/40 text-rose-500" : ""}
+                          ${!hasMarks && isWrong ? "bg-rose-500/20 text-rose-500" : ""}
                           ${row === 0 ? "border-t-0" : "border-t"}
                           ${row === 2 ? "border-b-0" : "border-b"}
                           ${col === 0 ? "border-l-0" : "border-l"}
                           ${col === 2 ? "border-r-0" : "border-r"}
-                          ${isDraw ? "p-2 text-mauve-500" : "items-center justify-center text-2xl"}
-                          w-full flex aspect-square cursor-pointer disabled:cursor-default border-mauve-700/40`}
+                          w-full flex items-center justify-center text-2xl aspect-square cursor-pointer disabled:cursor-default border-mauve-700/40`}
                       >
-                        {realValue !== 0
-                          ? realValue
-                          : drawValue !== 0
-                            ? drawValue
-                            : ""}
+                        {realValue !== 0 ? (
+                          realValue
+                        ) : hasMarks ? (
+                          <div className="w-full h-full grid grid-cols-3 grid-rows-3 text-[14px] leading-none text-mauve-500">
+                            {marks.map((isMarked, i) => (
+                              <span
+                                key={i}
+                                className="flex items-center justify-center"
+                              >
+                                {isMarked ? i + 1 : ""}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          ""
+                        )}
                       </button>
                     );
                   }),
